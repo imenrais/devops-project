@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_ENV = credentials('sonarqube-token')
+        SONARQUBE_ENV = credentials(sonarqube-token)
         SONAR_HOST_URL = 'http://sonarqube:9000'
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         IMAGE_NAME = 'imenrais/devops-backend'
@@ -38,8 +38,9 @@ pipeline {
                     sh '''
                         mvn sonar:sonar \
                             -Dsonar.projectKey=devops-project \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.host.url=http://sonarqube.10:9000 \
                             -Dsonar.login=$SONARQUBE_ENV
+			    -Dsonar.projectBaseDir=.
                     '''
                 }
             }
