@@ -1,41 +1,67 @@
 pipeline {
     agent any
 
+    environment {
+        // Credentials IDs (must match Jenkins credentials)
+        GITHUB_TOKEN = credentials('github-cred')
+        SONAR_TOKEN = credentials('sonarqube-token')
+
+        // Tool names (must match Manage Jenkins → Tools)
+        JAVA_HOME = tool(name: 'jdk17', type: 'jdk')
+        MAVEN_HOME = tool(name: 'maven', type: 'maven')
+        PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${env.PATH}"
+    }
+
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
-                echo 'Cloning project from GitHub...'
-                git branch: 'main', url: 'https://github.com/imenrais/devops-project.git'
+                git branch: 'main', url: 'https://github.com/imenrais/devops-project.git', credentialsId: 'github-cred'
             }
         }
 
-        stage('Build with Maven') {
+        stage('Build') {
             steps {
-                echo 'Building the project...'
-                sh 'mvn clean package'
+                sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Run Tests') {
+        stage('Test') {
             steps {
-                echo 'Running tests...'
                 sh 'mvn test'
             }
         }
 
-        stage('Deploy Simulation') {
+        stage('SonarQube Analysis') {
             steps {
-                echo 'Deployment simulation complete.'
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=devops-project -Dsonar.login=$SONAR_TOKEN'
+                }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    sh '''
+                    docker build -t imenrais/backend:latest .
+                    echo "$GITHUB_TOKEN" | docker login ghcr.io -u imenrais --password-stdin
+                    docker tag imenrais/backend:latest ghcr.io/imenrais/backend:latest
+                    docker push ghcr.io/imenrais/backend:latest
+                    '''
+                }
             }
         }
     }
 
     post {
+        always {
+            echo 'Pipeline finished.'
+        }
         success {
-            echo '✅ Pipeline executed successfully!'
+            echo 'Build and deployment succeeded 🎉'
         }
         failure {
-            echo '❌ Pipeline failed!'
+            echo 'Something went wrong ❌'
         }
     }
 }
