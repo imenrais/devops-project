@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_ENV = credentials(sonarqube-token)
+        SONARQUBE_ENV = credentials('sonarqube-token')
         SONAR_HOST_URL = 'http://sonarqube:9000'
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         IMAGE_NAME = 'imenrais/devops-backend'
