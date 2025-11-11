@@ -35,13 +35,7 @@ pipeline {
             steps {
                 echo '🔍 Running SonarQube code analysis...'
                 withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        mvn sonar:sonar \
-                            -Dsonar.projectKey=devops-project \
-                            -Dsonar.host.url=http://sonarqube:9000 \
-                            -Dsonar.login=$SONARQUBE_ENV \
-			    -Dsonar.projectBaseDir=.
-                    '''
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=devops-project -Dsonar.host.url=http://sonarqube:9000 -Dsonar.login=$SONARQUBE_ENV -Dsonar.projectBaseDir=.'
                 }
             }
         }
