@@ -1,21 +1,20 @@
 pipeline {
     agent any
 
-    environment {
-        // Credentials IDs (must match Jenkins credentials)
-        GITHUB_TOKEN = credentials('github-cred')
-        SONAR_TOKEN = credentials('sonarqube-token')
+    tools {
+        jdk 'jdk17'
+        maven 'maven'
+    }
 
-        // Tool names (must match Manage Jenkins → Tools)
-        JAVA_HOME = tool(name: 'jdk17', type: 'jdk')
-        MAVEN_HOME = tool(name: 'maven', type: 'maven')
-        PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${env.PATH}"
+    environment {
+        JAVA_HOME = tool(name: 'jdk17', type: 'hudson.model.JDK')
+        PATH = "${JAVA_HOME}/bin:${PATH}"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/imenrais/devops-project.git', credentialsId: 'github-cred'
+                git branch: 'main', credentialsId: 'github-cred', url: 'https://github.com/imenrais/devops-project.git'
             }
         }
 
@@ -33,20 +32,24 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=devops-project -Dsonar.login=$SONAR_TOKEN'
+                withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=devops-project \
+                        -Dsonar.host.url=http://sonarqube:9000 \
+                        -Dsonar.login=$SONAR_TOKEN
+                    '''
                 }
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                script {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
-                    docker build -t imenrais/backend:latest .
-                    echo "$GITHUB_TOKEN" | docker login ghcr.io -u imenrais --password-stdin
-                    docker tag imenrais/backend:latest ghcr.io/imenrais/backend:latest
-                    docker push ghcr.io/imenrais/backend:latest
+                        docker login -u $DOCKER_USER -p $DOCKER_PASS
+                        docker build -t imenrais/backend:latest .
+                        docker push imenrais/backend:latest
                     '''
                 }
             }
@@ -54,15 +57,11 @@ pipeline {
     }
 
     post {
-        always {
-            echo 'Pipeline finished.'
-        }
         success {
-            echo 'Build and deployment succeeded 🎉'
+            echo 'Pipeline executed successfully ✅'
         }
         failure {
             echo 'Something went wrong ❌'
         }
     }
 }
-
