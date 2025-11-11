@@ -1,17 +1,16 @@
 global:
   scrape_interval:     15s
   evaluation_interval: 15s
-  scrape_timeout:      10s
 
 # Alertmanager configuration
 alerting:
   alertmanagers:
   - static_configs:
-    - targets:
+    - targets: []
       # - alertmanager:9093
 
 # Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
-rule_files:
+rule_files: []
   # - "first_rules.yml"
   # - "second_rules.yml"
 
@@ -21,7 +20,12 @@ scrape_configs:
   - job_name: 'prometheus'
     static_configs:
     - targets: ['localhost:9090']
-  - job_name: 'jenkins'
-    metrics_path: /prometheus/
+      labels:
+        app: "prometheus"
+
+  - job_name: 'springboot'
+    metrics_path: '/actuator/prometheus'
     static_configs:
-    - targets: ['192.168.1.101:8080']
+    - targets: ['backendserver:8089']
+      labels:
+        app: "springboot"

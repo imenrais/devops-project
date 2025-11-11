@@ -1,4 +1,5 @@
 version: "3.4"
+
 services:
   mysqldb:
     image: mysql:latest
@@ -10,10 +11,17 @@ services:
       - '3306:3306'
     volumes:
       - db_vol:/var/lib/mysql:rw
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - common-net
 
   backend:
     container_name: 'backendserver'
-    image: nadinemilli/achat
+    image: imenrais/backend:1.1
     ports:
       - '8089:8089'
     restart: unless-stopped
@@ -22,13 +30,16 @@ services:
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
     depends_on:
-      - mysqldb
+      mysqldb:
+        condition: service_healthy
+    networks:
+      - common-net
 
   prometheus:
     image: prom/prometheus:latest
     volumes:
       - prometheus_data:/prometheus
-      - prometheus_config:/etc/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
     networks:
@@ -47,6 +58,34 @@ services:
     networks:
       - common-net
 
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    image: jenkins-with-maven
+    container_name: jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  sonarqube:
+    image: sonarqube:lts
+    container_name: sonarqube
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    networks:
+      - common-net
+
 volumes:
   db_vol:
   sonarqube_data:
@@ -58,7 +97,9 @@ volumes:
   grafana_data:
   grafana_config:
   grafana_plugins:
+  jenkins_home:
 
 networks:
   common-net:
     driver: bridge
+
