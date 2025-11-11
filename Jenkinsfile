@@ -39,7 +39,7 @@ pipeline {
                         mvn sonar:sonar \
                             -Dsonar.projectKey=devops-project \
                             -Dsonar.host.url=http://sonarqube:9000 \
-                            -Dsonar.login=$SONARQUBE_ENV
+                            -Dsonar.login=$SONARQUBE_ENV \
 			    -Dsonar.projectBaseDir=.
                     '''
                 }
